@@ -318,6 +318,7 @@ set(${PREFIX}ENABLE_ENCODER_FFMPEG_NVENC ON CACHE BOOL "Enable NVENC Encoder in 
 set(${PREFIX}ENABLE_ENCODER_FFMPEG_PRORES ON CACHE BOOL "Enable ProRes Encoder in FFmpeg.")
 set(${PREFIX}ENABLE_ENCODER_FFMPEG_DNXHR ON CACHE BOOL "Enable DNXHR Encoder in FFmpeg.")
 set(${PREFIX}ENABLE_ENCODER_AOM_AV1 ON CACHE BOOL "Enable AOM AV1 Encoder.")
+set(${PREFIX}ENABLE_ENCODER_AMD_AMF ON CACHE BOOL "Enable AMD AMF Encoder integration.")
 
 ## Filters
 set(${PREFIX}ENABLE_FILTER_AUTOFRAMING ON CACHE BOOL "Enable Auto-Framing Filter")
@@ -523,6 +524,18 @@ function(feature_encoder_aom_av1 RESOLVE)
 	endif()
 endfunction()
 
+function(feature_encoder_amd_amf RESOLVE)
+	is_feature_enabled(ENCODER_AMD_AMF T_CHECK)
+	if(RESOLVE AND T_CHECK)
+		if(NOT HAVE_AMD_AMF)
+			message(WARNING "${LOGPREFIX}AMD AMF encoder missing AMD AMF SDK. Disabling...")
+			set_feature_disabled(ENCODER_AMD_AMF ON)
+		endif()
+	elseif(T_CHECK)
+		set(REQUIRE_AMD_AMF ON PARENT_SCOPE)
+	endif()
+endfunction()
+
 function(feature_filter_autoframing RESOLVE)
 	is_feature_enabled(FILTER_AUTOFRAMING T_CHECK)
 	if(RESOLVE AND T_CHECK)
@@ -679,6 +692,7 @@ endfunction()
 # Set Requirements
 feature_encoder_ffmpeg(OFF)
 feature_encoder_aom_av1(OFF)
+feature_encoder_amd_amf(OFF)
 feature_filter_autoframing(OFF)
 feature_filter_blur(OFF)
 feature_filter_color_grade(OFF)
@@ -770,6 +784,12 @@ if(REQUIRE_JSON)
 	endif()
 endif()
 
+#- AMD Advanced Media Framework
+set(HAVE_AMD_AMF OFF)
+if(REQUIRE_AMD_AMF)
+	# Do things to AMD AMF
+endif()
+
 #- NVIDIA Augmented Reality SDK
 set(HAVE_NVIDIA_AR_SDK OFF)
 if(REQUIRE_NVIDIA_AR_SDK AND D_PLATFORM_WINDOWS)
@@ -837,6 +857,7 @@ endif()
 # Verify Requirements
 feature_encoder_ffmpeg(ON)
 feature_encoder_aom_av1(ON)
+feature_encoder_amd_amf(ON)
 feature_filter_autoframing(ON)
 feature_filter_blur(ON)
 feature_filter_color_grade(ON)
@@ -1256,6 +1277,20 @@ if(T_CHECK)
 	)
 	list(APPEND PROJECT_DEFINITIONS
 		ENABLE_ENCODER_AOM_AV1
+	)
+endif()
+
+# Encoder/AMD AMF
+is_feature_enabled(ENCODER_AMD_AMF T_CHECK)
+if(T_CHECK)
+	list(APPEND PROJECT_PRIVATE_SOURCE
+		"source/encoders/encoder-amd-amf.hpp"
+		"source/encoders/encoder-amd-amf.cpp"
+	)
+	list(APPEND PROJECT_INCLUDE_DIRS
+	)
+	list(APPEND PROJECT_DEFINITIONS
+		ENABLE_ENCODER_AMD_AMF
 	)
 endif()
 
