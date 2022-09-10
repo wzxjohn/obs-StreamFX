@@ -318,6 +318,7 @@ set(${PREFIX}ENABLE_ENCODER_FFMPEG_NVENC ON CACHE BOOL "Enable NVENC Encoder in 
 set(${PREFIX}ENABLE_ENCODER_FFMPEG_PRORES ON CACHE BOOL "Enable ProRes Encoder in FFmpeg.")
 set(${PREFIX}ENABLE_ENCODER_FFMPEG_DNXHR ON CACHE BOOL "Enable DNXHR Encoder in FFmpeg.")
 set(${PREFIX}ENABLE_ENCODER_AOM_AV1 ON CACHE BOOL "Enable AOM AV1 Encoder.")
+set(${PREFIX}ENABLE_ENCODER_INTEL_QSV ON CACHE BOOL "Enable Intel QSV integration.")
 
 ## Filters
 set(${PREFIX}ENABLE_FILTER_AUTOFRAMING ON CACHE BOOL "Enable Auto-Framing Filter")
@@ -511,6 +512,18 @@ function(feature_encoder_ffmpeg RESOLVE)
 	endif()
 endfunction()
 
+function(feature_encoder_intel_qsv RESOLVE)
+	is_feature_enabled(ENCODER_INTEL_QSV T_CHECK)
+	if(RESOLVE AND T_CHECK)
+		if(NOT HAVE_INTEL_ONEVPL)
+			message(WARNING "${LOGPREFIX}AOM AV1 encoder missing AOM library. Disabling...")
+			set_feature_disabled(ENCODER_AOM_AV1 ON)
+		endif()
+	elseif(T_CHECK)
+		set(REQUIRE_INTEL_ONEVPL ON PARENT_SCOPE)
+	endif()
+endfunction()
+
 function(feature_encoder_aom_av1 RESOLVE)
 	is_feature_enabled(ENCODER_AOM_AV1 T_CHECK)
 	if(RESOLVE AND T_CHECK)
@@ -679,6 +692,7 @@ endfunction()
 # Set Requirements
 feature_encoder_ffmpeg(OFF)
 feature_encoder_aom_av1(OFF)
+feature_encoder_intel_qsv(OFF)
 feature_filter_autoframing(OFF)
 feature_filter_blur(OFF)
 feature_filter_color_grade(OFF)
@@ -770,6 +784,12 @@ if(REQUIRE_JSON)
 	endif()
 endif()
 
+#- Intel oneVPL
+set(HAVE_INTEL_ONEVPL OFF)
+if(REQUIRE_INTEL_ONEVPL)
+	# Do the things that compile onevpl+dependencies, or use findmodules or similar.
+endif()
+
 #- NVIDIA Augmented Reality SDK
 set(HAVE_NVIDIA_AR_SDK OFF)
 if(REQUIRE_NVIDIA_AR_SDK AND D_PLATFORM_WINDOWS)
@@ -837,6 +857,7 @@ endif()
 # Verify Requirements
 feature_encoder_ffmpeg(ON)
 feature_encoder_aom_av1(ON)
+feature_encoder_intel_qsv(ON)
 feature_filter_autoframing(ON)
 feature_filter_blur(ON)
 feature_filter_color_grade(ON)
@@ -1250,6 +1271,21 @@ if(T_CHECK)
 		"source/encoders/codecs/av1.cpp"
 		"source/encoders/encoder-aom-av1.hpp"
 		"source/encoders/encoder-aom-av1.cpp"
+	)
+	list(APPEND PROJECT_INCLUDE_DIRS
+		${AOM_INCLUDE_DIR}
+	)
+	list(APPEND PROJECT_DEFINITIONS
+		ENABLE_ENCODER_AOM_AV1
+	)
+endif()
+
+# Encoder/Intel QSV
+is_feature_enabled(ENCODER_INTEL_QSV T_CHECK)
+if(T_CHECK)
+	list(APPEND PROJECT_PRIVATE_SOURCE
+		"source/encoders/encoder-intel-qsv.hpp"
+		"source/encoders/encoder-intel-qsv.cpp"
 	)
 	list(APPEND PROJECT_INCLUDE_DIRS
 		${AOM_INCLUDE_DIR}
